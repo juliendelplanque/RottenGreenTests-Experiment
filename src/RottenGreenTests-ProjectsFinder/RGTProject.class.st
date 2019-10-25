@@ -18,6 +18,11 @@ RGTProject class >> blacklist [
 	^ #('pharo-project/pharo' 'moosetechnology/Moose' 'jecisc/Bazard' 'exercism/pharo-smalltalk')
 ]
 
+{ #category : #'ston-core' }
+RGTProject class >> stonAllInstVarNames [
+	^ super stonAllInstVarNames \ { #token }
+]
+
 { #category : #accessing }
 RGTProject class >> token [
 	^ token
@@ -117,6 +122,14 @@ RGTProject >> projectName [
 { #category : #accessing }
 RGTProject >> projectName: anObject [
 	projectName := anObject
+]
+
+{ #category : #'as yet unclassified' }
+RGTProject >> sshUrl [
+	^ 'git@github.com:{username}/{projectName}' format: { 
+		'username' -> self username.
+		'projectName' -> self projectName
+	} asDictionary
 ]
 
 { #category : #accessing }
