@@ -4,7 +4,11 @@ Class {
 	#instVars : [
 		'username',
 		'projectName',
-		'baselinePath'
+		'baselinePath',
+		'token'
+	],
+	#classInstVars : [
+		'token'
 	],
 	#category : #'RottenGreenTests-ProjectsFinder'
 }
@@ -12,6 +16,16 @@ Class {
 { #category : #accessing }
 RGTProject class >> blacklist [
 	^ #('pharo-project/pharo' 'moosetechnology/Moose' 'jecisc/Bazard' 'exercism/pharo-smalltalk')
+]
+
+{ #category : #accessing }
+RGTProject class >> token [
+	^ token
+]
+
+{ #category : #accessing }
+RGTProject class >> token: anObject [
+	token := anObject
 ]
 
 { #category : #'instance creation' }
@@ -32,7 +46,8 @@ RGTProject >> baselineDetectionForDirectory: subDirectory ifFound: ifFoundBlock 
 	[ | json |
 		json := STONJSON fromString: (self getContents: (self baseRepoAPIUrl / 'contents' / subDirectory)).
 		^ ifFoundBlock value: (Path * subDirectory / ((self findBaselineIn: json) at: #name))
-	] on: NotFound, ZnHttpUnsuccessful do: [
+	] on: NotFound, ZnHttpUnsuccessful do: [ :error |
+		Transcript show: error asString; cr.
 		^ nil ]
 ]
 
@@ -55,7 +70,7 @@ RGTProject >> findBaselineIn: arrayOfDictionary [
 { #category : #'as yet unclassified' }
 RGTProject >> getContents: aZnUrl [
 	^ ZnClient new
-		headerAt: 'Authorization' put: 'token f9cbf45df00a664110593555d8d6d1d72f8e425f';
+		headerAt: 'Authorization' put: 'token ' , self token;
 		url: aZnUrl;
 		get
 ]
@@ -102,6 +117,16 @@ RGTProject >> projectName [
 { #category : #accessing }
 RGTProject >> projectName: anObject [
 	projectName := anObject
+]
+
+{ #category : #accessing }
+RGTProject >> token [
+	^ token ifNil: [ token := self class token ]
+]
+
+{ #category : #accessing }
+RGTProject >> token: anObject [
+	token := anObject
 ]
 
 { #category : #accessing }
