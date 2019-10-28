@@ -4,16 +4,10 @@ Class {
 	#category : #'RottenGreenTests-ProjectsFinder'
 }
 
-{ #category : #'as yet unclassified' }
+{ #category : #accessing }
 RGTExperiment class >> notAnalysableBecauseTravisInvalid [
-	^ { '/Users/julien/Documents/GIT/Papers/2019-tse-rottentests/Experiment/Pharo/_projects/Cruiser/_rotten_versions.csv'.
-'/Users/julien/Documents/GIT/Papers/2019-tse-rottentests/Experiment/Pharo/_projects/filetree/_rotten_versions.csv'.
- '/Users/julien/Documents/GIT/Papers/2019-tse-rottentests/Experiment/Pharo/_projects/hermes/_rotten_versions.csv'.
-'/Users/julien/Documents/GIT/Papers/2019-tse-rottentests/Experiment/Pharo/_projects/phanide/_rotten_versions.csv'.
-'/Users/julien/Documents/GIT/Papers/2019-tse-rottentests/Experiment/Pharo/_projects/pharo-talents/_rotten_versions.csv'.
-'/Users/julien/Documents/GIT/Papers/2019-tse-rottentests/Experiment/Pharo/_projects/PharoCompatibility/_rotten_versions.csv'.
-'/Users/julien/Documents/GIT/Papers/2019-tse-rottentests/Experiment/Pharo/_projects/Scale/_rotten_versions.csv'.
-'/Users/julien/Documents/GIT/Papers/2019-tse-rottentests/Experiment/Pharo/_projects/st-st/_rotten_versions.csv'}
+	"This method returns the name of the projects that can not be analysed because their travis config does not provide a specific pharo version or they do not run in Pharo."
+	^ #('Cruiser' 'filetree' 'hermes' 'phanide' 'pharo-talents' 'PharoCompatibility' 'Scale' 'st-st')
 ]
 
 { #category : #cloning }
@@ -30,7 +24,34 @@ RGTExperiment >> cloneGitRepositories [
 ]
 
 { #category : #'information retrieval' }
+RGTExperiment >> extractMajorVersionForProject [
+	^ self projectsClonesDirectory children iterator
+		| #isDirectory selectIt
+		| [ :fileRef | self class notAnalysableBecauseTravisInvalid includes: fileRef basename ] rejectIt
+		| [ :fileRef | 
+			|majorVersion plateform architecture|
+			majorVersion := fileRef / '_rotten_versions.csv' readStreamDo: [ :stream |
+				(((NeoCSVReader on: stream)
+					skipHeader;
+					upToEnd) sort: [ :array | (array second splitOn: $.) first asInteger ] asSortFunction , [ :array | (array second splitOn: $.) second asInteger ] asSortFunction) first ].
+			plateform := (majorVersion first matchesRegex: '.+\d\d')
+								ifTrue: [ majorVersion first allButLast: 2 ]
+								ifFalse: [ majorVersion first ].
+			architecture := (majorVersion first endsWith: '32')
+									ifTrue: [ '32' ]
+									ifFalse: [ '64' ].
+			fileRef / '_rotten_major_version.csv' writeStreamDo: [ :writeStream |
+				(NeoCSVWriter on: writeStream)
+					nextPut: #('Plateform' 'Architecture' 'Pharo version');
+					nextPut: { plateform . architecture . majorVersion second reject: [ :c | c = $. ] } ] ] doIt
+		> NullAddableObject
+		
+]
+
+{ #category : #'information retrieval' }
 RGTExperiment >> extractPharoVersionsFromTravisConfigFiles [
+	"Extract informations related to Pharo version in which the project run and stores them in the directory of the project
+	 in _rotten_versions.csv file."
 	self projectsClonesDirectory children iterator
 		| #isDirectory selectIt
 		| [ :fileRef | fileRef / '.travis.yml' ] collectIt
