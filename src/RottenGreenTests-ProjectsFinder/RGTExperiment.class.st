@@ -24,6 +24,26 @@ RGTExperiment >> cloneGitRepositories [
 ]
 
 { #category : #'information retrieval' }
+RGTExperiment >> extractBaselineFromSmalltalkCIConfigFiles [
+	self projectsClonesDirectory children iterator
+		| #isDirectory selectIt
+		| [ :fileRef | 
+			fileRef basename = 'GraceInPharo'
+				ifTrue: [ fileRef / '.smalltalk.Unit.ston' ]
+				ifFalse: [ fileRef / '.smalltalk.ston' ] ] collectIt
+		| #exists selectIt
+		| [ :smalltalkCIFile | |baselineMatches|
+			baselineMatches := smalltalkCIFile contents allRegexMatches: '\#baseline\s*\:\s*[^,]+'.
+			baselineMatches := baselineMatches collect: [ :matchString | { (matchString splitOn: $') second } ].
+			smalltalkCIFile parent / '_rotten_baselines.csv' writeStreamDo: [ :writeStream |
+				(NeoCSVWriter on: writeStream)
+					nextPut: #('Baseline');
+					nextPutAll: baselineMatches ]
+			] doIt
+		> NullAddableObject
+]
+
+{ #category : #'information retrieval' }
 RGTExperiment >> extractMajorVersionForProject [
 	^ self projectsClonesDirectory children iterator
 		| #isDirectory selectIt
