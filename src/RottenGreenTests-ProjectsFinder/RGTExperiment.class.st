@@ -40,11 +40,11 @@ RGTExperiment >> extractMajorVersionForProject [
 			architecture := (majorVersion first endsWith: '32')
 									ifTrue: [ '32' ]
 									ifFalse: [ '64' ].
-			pharo_version := (String with: majorVersion second first with: $0).
+			pharo_version := majorVersion second .
 			fileRef / '_rotten_major_version.csv' writeStreamDo: [ :writeStream |
 				(NeoCSVWriter on: writeStream)
-					nextPut: #('Plateform' 'Architecture' 'Pharo version' 'Sources version');
-					nextPut: { plateform . architecture . pharo_version. (pharo_version asInteger - 10) asString } ] ] doIt
+					nextPut: #('Plateform' 'Architecture' 'Pharo version' );
+					nextPut: { plateform . architecture . pharo_version } ] ] doIt
 		> NullAddableObject
 		
 ]
@@ -83,7 +83,15 @@ RGTExperiment >> generateImagesAndVMDownloadScript [
 					writeStream
 						nextPutAll:
 							((self generateShellScriptToBuildImageFrom: metadataRaw) lines
-								joinUsing: String lf) ] ]
+								joinUsing: String lf) ].
+			directory / 'rtf_install.st'
+				writeStreamDo: [ :writeStream | 
+					writeStream
+						nextPutAll: 'Metacello new
+	repository: ''github://juliendelplanque/RottenTestsFinder:v1.5.0/src'';
+	baseline: ''RottenTestsFinder'';
+	onConflictUseIncoming;
+	load.' ] ]
 ]
 
 { #category : #'as yet unclassified' }
@@ -102,17 +110,10 @@ set -o pipefail
 set -C
 set -u
 
-wget "http://files.pharo.org/image/{image_version}/latest-{architecture}.zip"
-unzip "latest-{architecture}.zip"
-rm "latest-{architecture}.zip"
-mv $(ls *.image) "Pharo.image"
-mv $(ls *.changes) "Pharo.changes"
-curl "https://get.pharo.org/{architecture}/{vm_version}" | bash
-wget "http://files.pharo.org/sources/PharoV{sources_version}.sources"'
+curl https://get.pharo.org/{architecture}/{image_version}+vm | bash'
 		format:
-			{('image_version' -> metadataRaw third).
+			{('image_version' -> (metadataRaw third copyWithout: $.)).
 			('architecture' -> metadataRaw second).
-			('sources_version' -> metadataRaw fourth).
 			('vm_version' -> ('vm' , metadataRaw third))} asDictionary
 ]
 
