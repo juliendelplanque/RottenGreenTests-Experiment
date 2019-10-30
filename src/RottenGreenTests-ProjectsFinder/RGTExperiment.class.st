@@ -157,8 +157,9 @@ packageSet := RPackageSet new.
 
 (RPackageSet slotNamed: #packages)
 	write: ((project packages collect: [ :package | [ package name asPackage ] on: NotFound do: [ nil ] ] thenReject: #isNil)) to: packageSet.
-	
-Transcript show: (RottenTestsFinder analyze: packageSet).' format: { 
+
+FileLocator imageDirectory / ''rotten_results.ston'' writeStreamDo: [ :stream |
+	STON put: (RottenTestsFinder analyze: packageSet) onStreamPretty: stream ]' format: { 
 		'baseline' -> baseline } asDictionary) lines joinUsing: String lf) ] ]
 ]
 
