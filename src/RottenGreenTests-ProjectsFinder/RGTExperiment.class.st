@@ -10,6 +10,17 @@ RGTExperiment class >> notAnalysableBecauseTravisInvalid [
 	^ #('Cruiser' 'filetree' 'hermes' 'phanide' 'pharo-talents' 'PharoCompatibility' 'Scale' 'st-st')
 ]
 
+{ #category : #'information retrieval' }
+RGTExperiment >> addUsernameProjectnameMetadata [
+	| projects |
+	projects := '/Users/julien/Documents/GIT/Papers/2019-tse-rottentests/Experiment/Pharo/selected_projects.ston' asFileReference readStreamDo: [ :stream | STON fromStream: stream ].
+	self projectsClonesDirectories do: [ :directory |
+		|p|
+		p := projects detect: [ :project | project projectName = directory basename ].
+		directory / '_rotten_project.ston' writeStreamDo: [ :writeStream |
+			STON put: p onStreamPretty: writeStream ] ]
+]
+
 { #category : #cloning }
 RGTExperiment >> cloneGitRepositories [
 	self selectAllProjectsWithBaselineAndTravisConfig
@@ -90,14 +101,24 @@ RGTExperiment >> extractPharoVersionsFromTravisConfigFiles [
 { #category : #'as yet unclassified' }
 RGTExperiment >> generateImagesAndVMDownloadScript [
 	self rootDirectoryForImages directories
-		do: [ :directory | 
-			| metadataRaw |
+		select: [ :directory | (self projectsClonesDirectory / directory basename
+				/ '_rotten_baselines.csv') exists ]
+		thenDo: [ :directory | 
+			| metadataRaw project baseline |
+			project := self projectsClonesDirectory / directory basename / '_rotten_project.ston' readStreamDo: [ :stream |
+				STON fromStream: stream ].
 			metadataRaw := self projectsClonesDirectory / directory basename
 				/ '_rotten_major_version.csv'
 				readStreamDo: [ :readStream | 
 					(NeoCSVReader on: readStream)
 						skipHeader;
 						next ].
+			baseline := (self projectsClonesDirectory / directory basename
+				/ '_rotten_baselines.csv'
+				readStreamDo: [ :readStream | 
+					(NeoCSVReader on: readStream)
+						skipHeader;
+						next ]) first.
 			directory / 'download.sh'
 				writeStreamDo: [ :writeStream | 
 					writeStream
@@ -111,7 +132,34 @@ RGTExperiment >> generateImagesAndVMDownloadScript [
 	repository: ''github://juliendelplanque/RottenTestsFinder:v1.5.0/src'';
 	baseline: ''RottenTestsFinder'';
 	onConflictUseIncoming;
-	load.' ] ]
+	load.' ].
+		directory / 'project_install.st'
+				writeStreamDo: [ :writeStream | 
+					writeStream
+						nextPutAll: (('Metacello new
+	repository: ''github://{user}/{projectname}/{srcpath}'';
+	baseline: ''{baseline}'';
+	onConflictUseIncoming;
+	load.' format: { 
+		'user' -> project username.
+		'projectname' -> project projectName.
+		'baseline' -> baseline.
+		'srcpath' -> project baselinePath parent pathString } asDictionary) lines joinUsing: String lf) ].
+		directory / 'run_analysis.st'
+			writeStreamDo: [ :writeStream |
+				writeStream
+					nextPutAll: (('RPackageSet compile: ''acceptSUnitVisitor: aRottenTestsFinder 
+	^ aRottenTestsFinder visitRPackageSet: self''.
+
+project := BaselineOf{baseline} project latestVersion.
+
+packageSet := RPackageSet new.
+
+(RPackageSet slotNamed: #packages)
+	write: ((project packages collect: [ :package | [ package name asPackage ] on: NotFound do: [ nil ] ] thenReject: #isNil)) to: packageSet.
+	
+Transcript show: (RottenTestsFinder analyze: packageSet).' format: { 
+		'baseline' -> baseline } asDictionary) lines joinUsing: String lf) ] ]
 ]
 
 { #category : #'as yet unclassified' }
