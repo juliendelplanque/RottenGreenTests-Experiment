@@ -41,37 +41,18 @@ RGTExperiment >> experimentScript [
 
 project := BaselineOf{baseline} project latestVersion.
 
-packageSet := RPackageSet new.
-
-(RPackageSet slotNamed: #packages)
-	write: ((project packages collect: [ :package | [ package name asPackage ] on: NotFound do: [ nil ] ] thenReject: #isNil)) to: packageSet.
+packages := project packages collect: [ :package | [ package name asPackage ] on: NotFound do: [ nil ] ] thenReject: #isNil.
 
 analysisResult := RottenTestsFinder analyze: packageSet.
 packagesCount := packageSet packages size.
-classesCount := (packageSet packages collect: [ :p | p definedClasses size ]) sum.
-testClassesCount := (packageSet packages collect: [ :p | (p definedClasses select: #isTestCase) size ]) sum.
-methodsCount := (packageSet packages collect: [ :p | (p definedClasses collect: #methods) size ]) sum.
+FileLocator imageDirectory / ''rotten-tests.csv'' writeStreamDo: [ :stream |
+	RTFExperiment runExperimentOnPackages: packages andWriteResultsOn: stream ].
 
-(FileLocator imageDirectory / ''rotten_results.txt'') ensureDelete
-	writeStreamDo: [ :writeStream |
-		writeStream
-			nextPutAll: #NumberOfPackages:;
-			nextPutAll: packagesCount asString;
-			lf;
-			nextPutAll: #NumberOfClasses:;
-			nextPutAll: classesCount asString;
-			lf;
-			nextPutAll: #NumberOfMethodss:;
-			nextPutAll: methodsCount asString;
-			lf;
-			nextPutAll: #NumberOfTestClasses:;
-			nextPutAll: testClassesCount asString;
-			lf;
-			nextPutAll: #NumberOfTestsRun:;
-			nextPutAll: analysisResult testsRunCount asString;
-			lf;
-			nextPutAll: #TODO;
-			lf ]'
+FileLocator imageDirectory / ''rotten-helpers.csv'' writeStreamDo: [ :stream |
+	RTFExperiment runHelperExperimentOnPackages: packages andWriteResultsOn: stream ].
+
+FileLocator imageDirectory / ''rotten-helpers-calls.csv'' writeStreamDo: [ :stream |
+	RTFExperiment runHelperCallsExperimentOnPackages: packages andWriteResultsOn: stream ].'
 ]
 
 { #category : #'information retrieval' }
@@ -173,7 +154,7 @@ RGTExperiment >> generateImagesAndVMDownloadScript [
 					writeStream
 						nextPutAll:
 							'Metacello new
-	repository: ''github://juliendelplanque/RottenTestsFinder:v1.6.0/src'';
+	repository: ''github://juliendelplanque/RottenTestsFinder:v1.6.1/src'';
 	baseline: ''RottenTestsFinder'';
 	onConflictUseIncoming;
 	load.' ].
