@@ -34,6 +34,46 @@ RGTExperiment >> cloneGitRepositories [
 		displayingProgress: 'Cloning projects to analyse.'
 ]
 
+{ #category : #'as yet unclassified' }
+RGTExperiment >> experimentScript [
+	^ 'RPackageSet compile: ''acceptSUnitVisitor: aRottenTestsFinder 
+	^ aRottenTestsFinder visitRPackageSet: self''.
+
+project := BaselineOf{baseline} project latestVersion.
+
+packageSet := RPackageSet new.
+
+(RPackageSet slotNamed: #packages)
+	write: ((project packages collect: [ :package | [ package name asPackage ] on: NotFound do: [ nil ] ] thenReject: #isNil)) to: packageSet.
+
+analysisResult := RottenTestsFinder analyze: packageSet.
+packagesCount := packageSet packages size.
+classesCount := (packageSet packages collect: [ :p | p definedClasses size ]) sum.
+testClassesCount := (packageSet packages collect: [ :p | (p definedClasses select: #isTestCase) size ]) sum.
+methodsCount := (packageSet packages collect: [ :p | (p definedClasses collect: #methods) size ]) sum.
+
+(FileLocator imageDirectory / ''rotten_results.txt'') ensureDelete
+	writeStreamDo: [ :writeStream |
+		writeStream
+			nextPutAll: #NumberOfPackages:;
+			nextPutAll: packagesCount asString;
+			lf;
+			nextPutAll: #NumberOfClasses:;
+			nextPutAll: classesCount asString;
+			lf;
+			nextPutAll: #NumberOfMethodss:;
+			nextPutAll: methodsCount asString;
+			lf;
+			nextPutAll: #NumberOfTestClasses:;
+			nextPutAll: testClassesCount asString;
+			lf;
+			nextPutAll: #NumberOfTestsRun:;
+			nextPutAll: analysisResult testsRunCount asString;
+			lf;
+			nextPutAll: #TODO;
+			lf ]'
+]
+
 { #category : #'information retrieval' }
 RGTExperiment >> extractBaselineFromSmalltalkCIConfigFiles [
 	self projectsClonesDirectory children iterator
@@ -101,12 +141,14 @@ RGTExperiment >> extractPharoVersionsFromTravisConfigFiles [
 { #category : #'as yet unclassified' }
 RGTExperiment >> generateImagesAndVMDownloadScript [
 	self rootDirectoryForImages directories
-		select: [ :directory | (self projectsClonesDirectory / directory basename
+		select: [ :directory | 
+			(self projectsClonesDirectory / directory basename
 				/ '_rotten_baselines.csv') exists ]
 		thenDo: [ :directory | 
 			| metadataRaw project baseline |
-			project := self projectsClonesDirectory / directory basename / '_rotten_project.ston' readStreamDo: [ :stream |
-				STON fromStream: stream ].
+			project := self projectsClonesDirectory / directory basename
+				/ '_rotten_project.ston'
+				readStreamDo: [ :stream | STON fromStream: stream ].
 			metadataRaw := self projectsClonesDirectory / directory basename
 				/ '_rotten_major_version.csv'
 				readStreamDo: [ :readStream | 
@@ -125,42 +167,39 @@ RGTExperiment >> generateImagesAndVMDownloadScript [
 						nextPutAll:
 							((self generateShellScriptToBuildImageFrom: metadataRaw) lines
 								joinUsing: String lf) ].
-			directory / 'rtf_install.st'
+			(directory / 'rtf_install.st')
+				ensureDelete;
 				writeStreamDo: [ :writeStream | 
 					writeStream
-						nextPutAll: 'Metacello new
-	repository: ''github://juliendelplanque/RottenTestsFinder:v1.5.0/src'';
+						nextPutAll:
+							'Metacello new
+	repository: ''github://juliendelplanque/RottenTestsFinder:v1.6.0/src'';
 	baseline: ''RottenTestsFinder'';
 	onConflictUseIncoming;
 	load.' ].
-		directory / 'project_install.st'
+			directory / 'project_install.st'
 				writeStreamDo: [ :writeStream | 
 					writeStream
-						nextPutAll: (('Metacello new
+						nextPutAll:
+							(('Metacello new
 	repository: ''github://{user}/{projectname}/{srcpath}'';
 	baseline: ''{baseline}'';
 	onConflictUseIncoming;
-	load.' format: { 
-		'user' -> project username.
-		'projectname' -> project projectName.
-		'baseline' -> baseline.
-		'srcpath' -> project baselinePath parent pathString } asDictionary) lines joinUsing: String lf) ].
-		(directory / 'run_analysis.st')
-			ensureDelete;
-			writeStreamDo: [ :writeStream |
-				writeStream
-					nextPutAll: (('RPackageSet compile: ''acceptSUnitVisitor: aRottenTestsFinder 
-	^ aRottenTestsFinder visitRPackageSet: self''.
-
-project := BaselineOf{baseline} project latestVersion.
-
-packageSet := RPackageSet new.
-
-(RPackageSet slotNamed: #packages)
-	write: ((project packages collect: [ :package | [ package name asPackage ] on: NotFound do: [ nil ] ] thenReject: #isNil)) to: packageSet.
-
-FLSerializer serialize: (RottenTestsFinder analyze: packageSet) toFileNamed: (FileLocator imageDirectory / ''rotten_results.fuel'') pathString' format: { 
-		'baseline' -> baseline } asDictionary) lines joinUsing: String lf) ] ]
+	load.'
+								format:
+									{('user' -> project username).
+									('projectname' -> project projectName).
+									('baseline' -> baseline).
+									('srcpath' -> project baselinePath parent pathString)}
+										asDictionary) lines joinUsing: String lf) ].
+			(directory / 'run_analysis.st')
+				ensureDelete;
+				writeStreamDo: [ :writeStream | 
+					writeStream
+						nextPutAll:
+							((self experimentScript
+								format: {('baseline' -> baseline)} asDictionary) lines
+								joinUsing: String lf) ] ]
 ]
 
 { #category : #'as yet unclassified' }
