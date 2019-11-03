@@ -36,7 +36,8 @@ RGTExperiment >> cloneGitRepositories [
 
 { #category : #'as yet unclassified' }
 RGTExperiment >> experimentScript [
-	^ 'RPackageSet compile: ''acceptSUnitVisitor: aRottenTestsFinder 
+	^ '| project packages |
+RPackageSet compile: ''acceptSUnitVisitor: aRottenTestsFinder 
 	^ aRottenTestsFinder visitRPackageSet: self''.
 
 project := BaselineOf{baseline} project latestVersion.
@@ -154,7 +155,7 @@ RGTExperiment >> generateImagesAndVMDownloadScript [
 					writeStream
 						nextPutAll:
 							'Metacello new
-	repository: ''github://juliendelplanque/RottenTestsFinder:v1.6.1/src'';
+	repository: ''github://juliendelplanque/RottenTestsFinder/src'';
 	baseline: ''RottenTestsFinder'';
 	onConflictUseIncoming;
 	load.' ].
