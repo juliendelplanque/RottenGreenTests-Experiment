@@ -145,7 +145,8 @@ RGTExperiment >> generateImagesAndVMDownloadScript [
 		'projectname' -> project projectName.
 		'baseline' -> baseline.
 		'srcpath' -> project baselinePath parent pathString } asDictionary) lines joinUsing: String lf) ].
-		directory / 'run_analysis.st'
+		(directory / 'run_analysis.st')
+			ensureDelete;
 			writeStreamDo: [ :writeStream |
 				writeStream
 					nextPutAll: (('RPackageSet compile: ''acceptSUnitVisitor: aRottenTestsFinder 
@@ -158,8 +159,7 @@ packageSet := RPackageSet new.
 (RPackageSet slotNamed: #packages)
 	write: ((project packages collect: [ :package | [ package name asPackage ] on: NotFound do: [ nil ] ] thenReject: #isNil)) to: packageSet.
 
-FileLocator imageDirectory / ''rotten_results.ston'' writeStreamDo: [ :stream |
-	STON put: (RottenTestsFinder analyze: packageSet) onStreamPretty: stream ]' format: { 
+FLSerializer serialize: (RottenTestsFinder analyze: packageSet) toFileNamed: (FileLocator imageDirectory / ''rotten_results.fuel'') pathString' format: { 
 		'baseline' -> baseline } asDictionary) lines joinUsing: String lf) ] ]
 ]
 
