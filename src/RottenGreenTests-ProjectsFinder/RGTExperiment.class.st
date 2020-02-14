@@ -44,8 +44,6 @@ project := BaselineOf{baseline} project latestVersion.
 
 packages := project packages collect: [ :package | [ package name asPackage ] on: NotFound do: [ nil ] ] thenReject: #isNil.
 
-analysisResult := RottenTestsFinder analyze: packageSet.
-packagesCount := packageSet packages size.
 FileLocator imageDirectory / ''rotten-tests.csv'' writeStreamDo: [ :stream |
 	RTFExperiment runExperimentOnPackages: packages andWriteResultsOn: stream ].
 
