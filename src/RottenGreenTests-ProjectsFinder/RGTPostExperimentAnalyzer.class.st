@@ -46,6 +46,73 @@ RGTPostExperimentAnalyzer >> folderWithoutResults [
 		self directoryHasResults: d ]
 ]
 
+{ #category : #'as yet unclassified' }
+RGTPostExperimentAnalyzer >> generateProjectMetadataFileForAllProjects [
+	self generateSummaryFileNamed: 'all-projects-meta.csv' forFilesNamed: 'project-meta.csv' withCSVHeader: #('Project'
+			'# Package'
+			'# Classes'
+			'# Test classes')
+]
+
+{ #category : #'as yet unclassified' }
+RGTPostExperimentAnalyzer >> generateRottenHelpersCallsFileForAllProjects [
+	self generateSummaryFileNamed: 'all-rotten-helpers-calls.csv' forFilesNamed: 'rotten-helpers-calls.csv' withCSVHeader: #('Project'
+			'Helper called'
+			'Helper called definition level'
+			'Holding method')
+]
+
+{ #category : #'as yet unclassified' }
+RGTPostExperimentAnalyzer >> generateRottenHelpersFileForAllProjects [
+	self generateSummaryFileNamed: 'all-rotten-helpers.csv' forFilesNamed: 'rotten-helpers.csv' withCSVHeader: #('Project'
+			'Package'
+			'Method'
+			'Max helper depth'
+			'Primitives calls in test count'
+			'All primitives calls involved in execution count'
+			'Not-executed #assert: getting false literal as parameter'
+			'Helpers calls in test count'
+			'All helpers calls involved in execution count'
+			'Test contains return'
+			'Context dependent rotten assert count'
+			'Is rotten'
+			'Test case depth')
+]
+
+{ #category : #'as yet unclassified' }
+RGTPostExperimentAnalyzer >> generateRottenTestsFileForAllProjects [
+	self generateSummaryFileNamed: 'all-rotten-tests.csv' forFilesNamed: 'rotten-tests.csv' withCSVHeader: #('Project'
+			'Package'
+			'Method'
+			'Max helper depth'
+			'Primitives calls in test count'
+			'All primitives calls involved in execution count'
+			'Not-executed #assert: getting false literal as parameter'
+			'Helpers calls in test count'
+			'All helpers calls involved in execution count'
+			'Test contains return'
+			'Context dependent rotten assert count'
+			'Is rotten'
+			'Test case depth')
+]
+
+{ #category : #'as yet unclassified' }
+RGTPostExperimentAnalyzer >> generateSummaryFileNamed: outputFileName forFilesNamed: inputDataFileName withCSVHeader: csvHeader [
+	| csvData |
+	csvData := OrderedCollection new.
+	self folderWithResults do: [ :folderWithResults |
+		folderWithResults / inputDataFileName readStreamDo: [ :readStream |
+			(NeoCSVReader on: readStream)
+				skipHeader;
+				do: [ :row |
+					csvData add: { folderWithResults basename } , row ] ] ] displayingProgress: 'Collecting data from folders...'.
+	
+	self resultsDirectory / outputFileName writeStreamDo: [ :writeStream |
+		(NeoCSVWriter on: writeStream)
+			nextPut: csvHeader;
+			nextPutAll: csvData ]
+]
+
 { #category : #accessing }
 RGTPostExperimentAnalyzer >> resultsDirectory [
 	^ resultsDirectory

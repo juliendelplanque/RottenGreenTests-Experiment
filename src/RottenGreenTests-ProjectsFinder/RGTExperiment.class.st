@@ -189,6 +189,24 @@ RGTExperiment >> generateImagesDirectories [
 ]
 
 { #category : #'as yet unclassified' }
+RGTExperiment >> generateProjectMetadataExtractionScript [
+	self rootDirectoryForImages directories
+		select: [ :directory | 
+			(self projectsClonesDirectory / directory basename
+				/ '_rotten_baselines.csv') exists ]
+		thenDo: [ :directory |
+			|baseline|
+			baseline := (self projectsClonesDirectory / directory basename
+				/ '_rotten_baselines.csv'
+				readStreamDo: [ :readStream | 
+					(NeoCSVReader on: readStream)
+						skipHeader;
+						next ]) first.
+			directory / 'extract_project_meta_data.st' writeStreamDo: [ :writeStream |
+				writeStream nextPutAll: (self projectMetadataExtractionScript format: { 'baseline' -> baseline} asDictionary) ] ]
+]
+
+{ #category : #'as yet unclassified' }
 RGTExperiment >> generateShellScriptToBuildImageFrom: metadataRaw [
 	^ '#!/usr/bin/env bash
 
@@ -203,6 +221,20 @@ curl https://get.pharo.org/{architecture}/{image_version}+vm | bash'
 			{('image_version' -> (metadataRaw third copyWithout: $.)).
 			('architecture' -> metadataRaw second).
 			('vm_version' -> ('vm' , metadataRaw third))} asDictionary
+]
+
+{ #category : #'as yet unclassified' }
+RGTExperiment >> projectMetadataExtractionScript [
+	^ '| project packages |
+
+project := BaselineOf{baseline} project latestVersion.
+
+packages := project packages collect: [ :package | [ package name asPackage ] on: NotFound do: [ nil ] ] thenReject: #isNil.
+
+FileLocator imageDirectory / ''project-meta.csv'' writeStreamDo: [ :stream |
+	(NeoCSVWriter on: stream)
+		nextPut: #(''# Packages'' ''# Classes'' ''# Test classes'');
+		nextPut: \{ packages size. (packages flatCollect: #definedClasses) size. ((packages flatCollect: #definedClasses) select: #isTestCase) size \} ]'
 ]
 
 { #category : #accessing }
